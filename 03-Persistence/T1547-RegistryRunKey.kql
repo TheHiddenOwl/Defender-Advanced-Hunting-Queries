@@ -1,0 +1,13 @@
+// Title: Suspicious Registry Run Key Modification
+// Description: Detects modifications to the Registry 'Run' keys which are commonly used by malware for persistence.
+// Severity: Medium
+// Category: Persistence
+// MITRE ATT&CK: T1547.001
+// Author: TheHiddenOwl
+
+DeviceRegistryEvents
+| where ActionType == @"RegistryValueSet"
+| where RegistryKey has @"\Microsoft\Windows\CurrentVersion\Run" or RegistryKey has @"\Microsoft\Windows\CurrentVersion\RunOnce"
+| where RegistryValueData !has @"\" // Exclude empty values or simple pointers if necessary
+| where InitiatingProcessFileName !in~ (@"msiexec.exe", @"setup.exe")
+| project TimeGenerated, DeviceName, RegistryKey, RegistryValueName, RegistryValueData, InitiatingProcessFileName, InitiatingProcessCommandLine

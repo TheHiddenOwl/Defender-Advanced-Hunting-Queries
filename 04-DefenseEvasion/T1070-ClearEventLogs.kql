@@ -1,0 +1,11 @@
+// Title: Clearing Windows Event Logs
+// Description: Detects attempts to clear Windows Event Logs using wevtutil or PowerShell, a common defense evasion tactic.
+// Severity: High
+// Category: Defense Evasion
+// MITRE ATT&CK: T1070.001
+// Author: TheHiddenOwl
+
+DeviceProcessEvents
+| where (FileName =~ @"wevtutil.exe" and ProcessCommandLine has_any (@"cl ", @"clear-log "))
+    or (FileName =~ @"powershell.exe" and ProcessCommandLine has @"Clear-EventLog")
+| project TimeGenerated, DeviceName, AccountName, ProcessCommandLine, InitiatingProcessFileName

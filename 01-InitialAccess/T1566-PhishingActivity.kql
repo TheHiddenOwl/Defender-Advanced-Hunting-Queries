@@ -1,0 +1,19 @@
+// Title: Phishing link followed by suspicious process
+// Description: Detects when a user clicks a link in an email (Outlook/Webmail) and subsequently a suspicious process is spawned.
+// Severity: High
+// Category: Initial Access
+// MITRE ATT&CK: T1566
+// Author: TheHiddenOwl
+
+let SuspiciousProcesses = pack_array(@"powershell.exe", @"cmd.exe", @"mshta.exe", @"wscript.exe", @"cscript.exe");
+DeviceNetworkEvents
+| where InitiatingProcessFileName in~ (@"outlook.exe", @"chrome.exe", @"msedge.exe", @"iexplore.exe")
+| where RemoteUrl != @""
+| project NetworkTime = TimeGenerated, DeviceId, DeviceName, InitiatingProcessFileName, RemoteUrl
+| join kind=inner (
+    DeviceProcessEvents
+    | where FileName in~ (SuspiciousProcesses)
+    | project ProcessTime = TimeGenerated, DeviceId, FileName, ProcessCommandLine, InitiatingProcessFileName
+) on DeviceId
+| where ProcessTime between (NetworkTime .. (NetworkTime + 5m))
+| project TimeGenerated = ProcessTime, DeviceName, InitiatingProcessFileName, FileName, ProcessCommandLine, RemoteUrl

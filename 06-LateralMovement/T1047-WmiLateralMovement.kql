@@ -1,0 +1,11 @@
+// Title: WMI Lateral Movement
+// Description: Detects use of WMI (Windows Management Instrumentation) to execute processes on remote systems.
+// Severity: Medium
+// Category: Lateral Movement
+// MITRE ATT&CK: T1047
+// Author: TheHiddenOwl
+
+DeviceProcessEvents
+| where InitiatingProcessFileName =~ @"wmiprvse.exe"
+| where FileName notin~ (@"conhost.exe", @"wbemtest.exe")
+| project TimeGenerated, DeviceName, AccountName, FileName, ProcessCommandLine, InitiatingProcessParentFileName

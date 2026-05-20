@@ -1,0 +1,13 @@
+// Title: Large Data Upload to Cloud Storage
+// Description: Detects large outbound network connections to common cloud storage providers, potential exfiltration.
+// Severity: Medium
+// Category: Exfiltration
+// MITRE ATT&CK: T1567
+// Author: TheHiddenOwl
+
+let CloudStorageDomains = pack_array(@"dropbox.com", @"onedrive.live.com", @"mega.nz", @"drive.google.com");
+DeviceNetworkEvents
+| where RemoteUrl has_any (CloudStorageDomains)
+| summarize TotalBytesSent = sum(BytesSent) by DeviceName, RemoteUrl, bin(TimeGenerated, 1h)
+| where TotalBytesSent > 100000000 // 100MB threshold
+| project TimeGenerated, DeviceName, RemoteUrl, TotalBytesSent
