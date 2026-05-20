@@ -1,0 +1,17 @@
+// Title: Ransomware File Encryption Activity
+// Description: Mass file rename/modification to ransomware-associated extensions in a short window. Strong indicator of active encryption.
+// Severity: High
+// Category: Impact
+// MITRE ATT&CK: T1486
+// Author: TheHiddenOwl
+
+let lookback = 1h;
+let FileThreshold = 20;
+let RansomExts = dynamic([@".locked", @".encrypted", @".enc", @".crypt", @".ransom", @".crypted", @".cryptolocker", @".cerber", @".zepto", @".locky"]);
+DeviceFileEvents
+| where Timestamp > ago(lookback)
+| where ActionType in (@"FileRenamed", @"FileModified", @"FileCreated")
+| where FileName has_any (RansomExts)
+| summarize FileCount = count(), Files = make_set(FileName, 20), FirstSeen = min(Timestamp) by DeviceName, bin(Timestamp, 5m), InitiatingProcessFileName
+| where FileCount > FileThreshold
+| order by FileCount desc

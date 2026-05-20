@@ -5,9 +5,13 @@
 // MITRE ATT&CK: T1547.001
 // Author: TheHiddenOwl
 
+let lookback = 7d;
+let exclusions = dynamic([@"msiexec.exe", @"setup.exe"]);
 DeviceRegistryEvents
+| where Timestamp > ago(lookback)
 | where ActionType == @"RegistryValueSet"
 | where RegistryKey has @"\Microsoft\Windows\CurrentVersion\Run" or RegistryKey has @"\Microsoft\Windows\CurrentVersion\RunOnce"
 | where RegistryValueData !has @"\" // Exclude empty values or simple pointers if necessary
-| where InitiatingProcessFileName !in~ (@"msiexec.exe", @"setup.exe")
-| project TimeGenerated, DeviceName, RegistryKey, RegistryValueName, RegistryValueData, InitiatingProcessFileName, InitiatingProcessCommandLine
+| where InitiatingProcessFileName !in~ (exclusions)
+| project Timestamp, DeviceName, RegistryKey, RegistryValueName, RegistryValueData, InitiatingProcessFileName, InitiatingProcessCommandLine
+| order by Timestamp desc

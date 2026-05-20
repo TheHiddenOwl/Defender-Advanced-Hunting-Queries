@@ -1,0 +1,9 @@
+// Title: [Descriptive Query Name]
+// Description: [What this detects and why it matters]
+// Severity: High / Medium / Low
+// Category: [Tactic]
+// MITRE ATT&CK: [Technique ID]
+// Author: TheHiddenOwl
+
+let lookback = 7d;
+let exclusions = dynamic([]);

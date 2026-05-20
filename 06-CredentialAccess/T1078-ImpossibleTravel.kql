@@ -1,0 +1,17 @@
+// Title: Impossible Travel - Multi-Country Sign-in
+// Description: Successful logins from multiple countries within 1 hour for the same account - indicates credential compromise.
+// Severity: High
+// Category: Credential Access
+// MITRE ATT&CK: T1078
+// Author: TheHiddenOwl
+
+let lookback = 1d;
+AADSignInEventsBeta
+| where Timestamp > ago(lookback)
+| where ErrorCode == 0
+| where isnotempty(Country)
+| summarize Countries = make_set(Country), IPList = make_set(IPAddress), SigninCount = count(), FirstSeen = min(Timestamp), LastSeen = max(Timestamp) by AccountUpn, bin(Timestamp, 1h)
+| where array_length(Countries) > 1
+| extend CountryList = strcat_array(Countries, @", ")
+| project FirstSeen, AccountUpn, CountryList, IPList, SigninCount
+| order by SigninCount desc

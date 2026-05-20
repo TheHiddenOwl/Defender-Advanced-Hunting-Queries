@@ -5,7 +5,11 @@
 // MITRE ATT&CK: T1047
 // Author: TheHiddenOwl
 
+let lookback = 7d;
+let exclusions = dynamic([@"conhost.exe", @"wbemtest.exe"]);
 DeviceProcessEvents
+| where Timestamp > ago(lookback)
 | where InitiatingProcessFileName =~ @"wmiprvse.exe"
-| where FileName notin~ (@"conhost.exe", @"wbemtest.exe")
-| project TimeGenerated, DeviceName, AccountName, FileName, ProcessCommandLine, InitiatingProcessParentFileName
+| where FileName !in~ (exclusions)
+| project Timestamp, DeviceName, AccountName, FileName, ProcessCommandLine, InitiatingProcessParentFileName
+| order by Timestamp desc
