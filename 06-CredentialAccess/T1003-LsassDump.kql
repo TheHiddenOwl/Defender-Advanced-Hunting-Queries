@@ -1,0 +1,18 @@
+// Title: LSASS Memory Dump Attempt
+// Description: Detects tools used to dump LSASS memory for credential harvesting (Mimikatz, ProcDump, comsvcs.dll method, etc.)
+// Severity: High
+// Category: Credential Access
+// MITRE ATT&CK: T1003.001
+// Author: TheHiddenOwl
+
+let lookback = 7d;
+let KnownEDR = dynamic([@"MsMpEng.exe", @"SenseCncProxy.exe", @"SenseIR.exe", @"CylanceSvc.exe", @"cb.exe"]);
+DeviceProcessEvents
+| where Timestamp > ago(lookback)
+| where (FileName in~ (@"procdump.exe", @"procdump64.exe") and ProcessCommandLine has @"lsass")
+     or (FileName =~ @"taskmgr.exe" and ProcessCommandLine has @"lsass")
+     or ProcessCommandLine has_any (@"sekurlsa::logonpasswords", @"sekurlsa::wdigest", @"lsadump::sam", @"lsadump::dcsync", @"mimikatz", @"mimilib")
+     or (FileName =~ @"rundll32.exe" and ProcessCommandLine has @"comsvcs.dll")
+| where InitiatingProcessFileName !in~ (KnownEDR)
+| project Timestamp, DeviceName, AccountName, FileName, ProcessCommandLine, InitiatingProcessFileName
+| order by Timestamp desc

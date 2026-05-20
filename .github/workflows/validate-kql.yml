@@ -1,0 +1,32 @@
+name: Validate KQL Files
+
+on:
+  pull_request:
+    paths:
+      - '**/*.kql'
+  push:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check all .kql files have required headers
+        run: |
+          FAIL=0
+          for f in $(find . -name "*.kql" -not -path "./.github/*" -not -path "./templates/*"); do
+            if ! grep -q "MITRE ATT&CK" "$f"; then
+              echo "MISSING HEADER: $f"
+              FAIL=1
+            fi
+            if ! grep -q "let lookback" "$f"; then
+              echo "MISSING TIME SCOPE: $f"
+              FAIL=1
+            fi
+          done
+          exit $FAIL
+
+      - name: List all query files
+        run: find . -name "*.kql" | sort

@@ -1,0 +1,18 @@
+// Title: DNS Beaconing Detection
+// Description: High-frequency DNS queries to the same domain may indicate C2 beaconing. Adjust QueryThreshold for your baseline.
+// Severity: High
+// Category: Command & Control
+// MITRE ATT&CK: T1071.004
+// Author: TheHiddenOwl
+
+let lookback = 1d;
+let QueryThreshold = 100;
+let KnownGood = dynamic([@"microsoft.com", @"windows.com", @"office.com", @"live.com", @"azure.com", @"akamai.com"]);
+DeviceNetworkEvents
+| where Timestamp > ago(lookback)
+| where isnotempty(RemoteUrl)
+| where not(RemoteUrl has_any (KnownGood))
+| summarize QueryCount = count(), FirstSeen = min(Timestamp), LastSeen = max(Timestamp) by DeviceName, RemoteUrl
+| where QueryCount > QueryThreshold
+| extend Duration = LastSeen - FirstSeen, AvgPerHour = round(toreal(QueryCount) / (datetime_diff(@"hour", LastSeen, FirstSeen) + 1), 1)
+| order by QueryCount desc

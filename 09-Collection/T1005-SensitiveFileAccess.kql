@@ -1,0 +1,17 @@
+// Title: Sensitive File Path Access
+// Description: Flags file reads in paths associated with sensitive data. Tune SensitivePaths for your org's folder structure.
+// Severity: Medium
+// Category: Collection
+// MITRE ATT&CK: T1005
+// Author: TheHiddenOwl
+
+let lookback = 7d;
+let SensitivePaths = dynamic([@"\\Finance\\", @"\\HR\\", @"\\Legal\\", @"\\Payroll\\", @"\\Passwords\\", @"\\Secrets\\", @"\\Credentials\\", @"\\Source\\", @"\\Vault\\"]);
+let ExcludedProcs = dynamic([@"OneDrive.exe", @"MsMpEng.exe", @"explorer.exe", @"backup.exe", @"robocopy.exe"]);
+DeviceFileEvents
+| where Timestamp > ago(lookback)
+| where ActionType == @"FileRead"
+| where FolderPath has_any (SensitivePaths)
+| where InitiatingProcessFileName !in~ (ExcludedProcs)
+| project Timestamp, DeviceName, AccountName, FolderPath, FileName, InitiatingProcessFileName
+| order by Timestamp desc

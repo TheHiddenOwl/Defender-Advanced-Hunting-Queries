@@ -1,0 +1,15 @@
+// Title: PsExec / SMB Lateral Movement
+// Description: Detects PsExec and PsExec-like remote execution patterns including PSEXESVC service creation and remote admin share access.
+// Severity: High
+// Category: Lateral Movement
+// MITRE ATT&CK: T1570, T1021.002
+// Author: TheHiddenOwl
+
+let lookback = 7d;
+let AdminDevices = dynamic([@"jumpsrv01", @"mgmt-ws01"]);
+DeviceProcessEvents
+| where Timestamp > ago(lookback)
+| where (FileName =~ @"psexec.exe" or FileName =~ @"psexec64.exe") or (InitiatingProcessFileName =~ @"services.exe" and FileName =~ @"psexesvc.exe") or ProcessCommandLine has_any (@"ADMIN$", @"IPC$", @"-s cmd", @"-i cmd")
+| where DeviceName !in~ (AdminDevices)
+| project Timestamp, DeviceName, AccountName, FileName, ProcessCommandLine, InitiatingProcessFileName, InitiatingProcessAccountName
+| order by Timestamp desc

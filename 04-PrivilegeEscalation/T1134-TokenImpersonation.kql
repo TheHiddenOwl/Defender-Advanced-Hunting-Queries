@@ -1,0 +1,15 @@
+// Title: Token Impersonation / Theft
+// Description: Detects processes performing token impersonation outside of expected OS system processes.
+// Severity: High
+// Category: Privilege Escalation
+// MITRE ATT&CK: T1134
+// Author: TheHiddenOwl
+
+let lookback = 7d;
+let TrustedProcs = dynamic([@"lsass.exe", @"services.exe", @"svchost.exe", @"winlogon.exe", @"wininit.exe", @"csrss.exe"]);
+DeviceEvents
+| where Timestamp > ago(lookback)
+| where ActionType == @"TokenImpersonation"
+| where InitiatingProcessFileName !in~ (TrustedProcs)
+| project Timestamp, DeviceName, AccountName, InitiatingProcessFileName, InitiatingProcessCommandLine, AdditionalFields
+| order by Timestamp desc
