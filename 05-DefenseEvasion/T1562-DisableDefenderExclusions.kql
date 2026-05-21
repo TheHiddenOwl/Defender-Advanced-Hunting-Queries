@@ -1,0 +1,17 @@
+// Title: Disable or Modify Defender Exclusions
+// Description: Detects Set-MpPreference PowerShell commands attempting to add exclusions to Windows Defender or disable real-time monitoring.
+// Severity: High
+// Category: Defense Evasion
+// MITRE ATT&CK: T1562
+// Author: TheHiddenOwl
+
+let lookback = 7d;
+let exclusions = dynamic([]);
+let suspicious_commands = dynamic([@"-ExclusionPath", @"-ExclusionExtension", @"-ExclusionProcess", @"-DisableRealtimeMonitoring $true"]);
+DeviceProcessEvents
+| where Timestamp > ago(lookback)
+| where FileName in~ (@"powershell.exe", @"pwsh.exe")
+| where ProcessCommandLine has @"Set-MpPreference"
+| where ProcessCommandLine has_any (suspicious_commands)
+| where ProcessCommandLine !in (exclusions)
+| project Timestamp, DeviceName, FileName, ProcessCommandLine, AccountName

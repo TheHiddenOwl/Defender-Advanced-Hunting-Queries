@@ -1,0 +1,16 @@
+// Title: Domain Trust Discovery via Common Tools
+// Description: Detects the execution of nltest.exe /domain_trusts or adfind.exe, which are used for domain trust enumeration.
+// Severity: Medium
+// Category: Discovery
+// MITRE ATT&CK: T1482
+// Author: TheHiddenOwl
+
+let lookback = 7d;
+let exclusions = dynamic([]);
+let discovery_tools = dynamic([@"nltest.exe", @"adfind.exe"]);
+DeviceProcessEvents
+| where Timestamp > ago(lookback)
+| where (FileName =~ @"nltest.exe" and ProcessCommandLine has @"/domain_trusts")
+    or (FileName =~ @"adfind.exe")
+| where ProcessCommandLine !in (exclusions)
+| project Timestamp, DeviceName, FileName, ProcessCommandLine, AccountName

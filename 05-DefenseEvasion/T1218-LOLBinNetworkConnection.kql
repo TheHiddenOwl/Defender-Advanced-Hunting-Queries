@@ -1,0 +1,16 @@
+// Title: LOLBin Network Connection to External IP
+// Description: Detects regsvr32.exe, rundll32.exe, or mshta.exe reaching out to external IP addresses, which is often used for downloading or executing malicious payloads.
+// Severity: Medium
+// Category: Defense Evasion
+// MITRE ATT&CK: T1218
+// Author: TheHiddenOwl
+
+let lookback = 7d;
+let exclusions = dynamic([]);
+let lolbins = dynamic([@"regsvr32.exe", @"rundll32.exe", @"mshta.exe"]);
+DeviceNetworkEvents
+| where Timestamp > ago(lookback)
+| where InitiatingProcessFileName in~ (lolbins)
+| where RemoteIPType == @"Public"
+| where RemoteIP !in (exclusions)
+| project Timestamp, DeviceName, InitiatingProcessFileName, InitiatingProcessCommandLine, RemoteIP, RemotePort, RemoteUrl

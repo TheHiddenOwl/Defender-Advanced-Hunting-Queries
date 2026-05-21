@@ -1,0 +1,17 @@
+// Title: UAC Bypass via Known Binaries
+// Description: Detects known UAC bypass binaries (e.g., fodhelper.exe, computerdefaults.exe) spawning command prompts or PowerShell, indicating potential privilege escalation.
+// Severity: High
+// Category: Privilege Escalation
+// MITRE ATT&CK: T1548
+// Author: TheHiddenOwl
+
+let lookback = 7d;
+let exclusions = dynamic([]);
+let uac_binaries = dynamic([@"fodhelper.exe", @"computerdefaults.exe", @"sdclt.exe", @"slui.exe", @"eventvwr.exe"]);
+let shell_processes = dynamic([@"cmd.exe", @"powershell.exe", @"pwsh.exe"]);
+DeviceProcessEvents
+| where Timestamp > ago(lookback)
+| where ParentFileName in~ (uac_binaries)
+| where FileName in~ (shell_processes)
+| where ProcessCommandLine !in (exclusions)
+| project Timestamp, DeviceName, ParentFileName, FileName, ProcessCommandLine, AccountName

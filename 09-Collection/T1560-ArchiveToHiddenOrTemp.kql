@@ -1,0 +1,17 @@
+// Title: Data Archiving to Hidden or Temp Folders
+// Description: Detects native archiving tools (tar, 7z, PowerShell) being run with output directed to hidden folders or Temp directories.
+// Severity: Medium
+// Category: Collection
+// MITRE ATT&CK: T1560
+// Author: TheHiddenOwl
+
+let lookback = 7d;
+let exclusions = dynamic([]);
+let archiving_tools = dynamic([@"tar.exe", @"7z.exe", @"7za.exe", @"rar.exe", @"zip.exe"]);
+let suspicious_paths = dynamic([@"\AppData\Local\Temp\", @"\Windows\Temp\", @"\.\"]); // \.\ for hidden in some contexts or current dir obfuscation
+DeviceProcessEvents
+| where Timestamp > ago(lookback)
+| where FileName in~ (archiving_tools) or ProcessCommandLine has @"Compress-Archive"
+| where ProcessCommandLine has_any (suspicious_paths)
+| where ProcessCommandLine !in (exclusions)
+| project Timestamp, DeviceName, FileName, ProcessCommandLine, AccountName

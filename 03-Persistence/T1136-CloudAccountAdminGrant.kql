@@ -1,0 +1,26 @@
+// Title: New Entra ID User Granted Privileged Role
+// Description: Hunts for the creation of new Entra ID users followed immediately (within 2 minutes) by granting them Global Admin or other privileged roles.
+// Severity: High
+// Category: Persistence
+// MITRE ATT&CK: T1136
+// Author: TheHiddenOwl
+
+let lookback = 7d;
+let exclusions = dynamic([]);
+let privileged_roles = dynamic([@"Global Administrator", @"Privileged Role Administrator", @"Security Administrator"]);
+let user_creation = CloudAppEvents
+| where Timestamp > ago(lookback)
+| where ActionType == @"Add user."
+| extend NewUser = tostring(RawEventData.Target[0].ID)
+| project CreationTime = Timestamp, NewUser, AdminUser = AccountObjectId;
+let role_assignment = CloudAppEvents
+| where Timestamp > ago(lookback)
+| where ActionType == @"Add member to role."
+| extend TargetUser = tostring(RawEventData.Target[0].ID)
+| extend RoleName = tostring(RawEventData.ModifiedProperties[1].NewValue)
+| where RoleName has_any (privileged_roles)
+| project AssignmentTime = Timestamp, TargetUser, RoleName;
+user_creation
+| join kind=inner role_assignment on $left.NewUser == $right.TargetUser
+| where AssignmentTime between (CreationTime .. (CreationTime + 2m))
+| project CreationTime, AssignmentTime, NewUser, RoleName, AdminUser

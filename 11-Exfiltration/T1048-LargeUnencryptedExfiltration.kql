@@ -1,0 +1,17 @@
+// Title: Large Outbound Data Transfer over Unencrypted Protocols
+// Description: Detects large outbound data transfers (>100MB) over FTP or HTTP from non-standard server environments.
+// Severity: High
+// Category: Exfiltration
+// MITRE ATT&CK: T1048
+// Author: TheHiddenOwl
+
+let lookback = 7d;
+let exclusions = dynamic([]);
+let threshold = 100MB;
+DeviceNetworkEvents
+| where Timestamp > ago(lookback)
+| where Protocol in (@"Tcp", @"Http") and (RemotePort == 21 or RemotePort == 80)
+| summarize TotalBytes = sum(BytesSent) by DeviceName, InitiatingProcessFileName, RemoteIP, RemotePort, bin(Timestamp, 1h)
+| where TotalBytes > threshold
+| where DeviceName !in (exclusions)
+| project Timestamp, DeviceName, InitiatingProcessFileName, RemoteIP, RemotePort, TotalBytes

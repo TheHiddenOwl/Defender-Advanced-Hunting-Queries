@@ -1,0 +1,19 @@
+// Title: Internal Port Scanning Activity
+// Description: Detects rapid outbound connection attempts over common ports (445, 3389, 22) to multiple internal IP addresses.
+// Severity: Medium
+// Category: Discovery
+// MITRE ATT&CK: T1046
+// Author: TheHiddenOwl
+
+let lookback = 7d;
+let exclusions = dynamic([]);
+let target_ports = dynamic([22, 445, 3389]);
+let threshold = 20;
+DeviceNetworkEvents
+| where Timestamp > ago(lookback)
+| where RemotePort in (target_ports)
+| where RemoteIPType == @"Private"
+| summarize UniqueIPs = dcount(RemoteIP) by DeviceName, InitiatingProcessFileName, bin(Timestamp, 1m)
+| where UniqueIPs > threshold
+| where DeviceName !in (exclusions)
+| project Timestamp, DeviceName, InitiatingProcessFileName, UniqueIPs

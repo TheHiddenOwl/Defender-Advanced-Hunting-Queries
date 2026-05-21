@@ -1,0 +1,18 @@
+// Title: Web Shell File Creation in Public Directories
+// Description: Detects web server processes writing .aspx, .jsp, or .php files to public-facing directories, which may indicate web shell deployment.
+// Severity: High
+// Category: Persistence
+// MITRE ATT&CK: T1505
+// Author: TheHiddenOwl
+
+let lookback = 7d;
+let exclusions = dynamic([@"C:\Windows\Microsoft.NET\Framework64\v4.0.30319\Temporary ASP.NET Files\"]);
+let web_servers = dynamic([@"w3wp.exe", @"httpd.exe", @"nginx.exe", @"tomcat.exe"]);
+let web_extensions = dynamic([@".aspx", @".jsp", @".php", @".asmx", @".ashx"]);
+DeviceFileEvents
+| where Timestamp > ago(lookback)
+| where ActionType == @"FileCreated"
+| where InitiatingProcessFileName in~ (web_servers)
+| where FileName has_any (web_extensions)
+| where not(FolderPath has_any (exclusions))
+| project Timestamp, DeviceName, FileName, FolderPath, InitiatingProcessFileName, InitiatingProcessCommandLine

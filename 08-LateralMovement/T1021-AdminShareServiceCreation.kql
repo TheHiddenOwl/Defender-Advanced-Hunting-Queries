@@ -1,0 +1,20 @@
+// Title: Lateral Movement via Admin Shares - Service Creation
+// Description: Detects services.exe creating a new service executing a .bat or .exe dropped into the ADMIN$ or C$ share, typical of smbexec or psexec behavior.
+// Severity: High
+// Category: Lateral Movement
+// MITRE ATT&CK: T1021
+// Author: TheHiddenOwl
+
+let lookback = 7d;
+let exclusions = dynamic([]);
+let file_creations = DeviceFileEvents
+| where Timestamp > ago(lookback)
+| where FolderPath startswith @"C:\Windows\" or FolderPath =~ @"C:\"
+| project FileCreateTime = Timestamp, DeviceId, FileName, FolderPath;
+DeviceProcessEvents
+| where Timestamp > ago(lookback)
+| where ParentFileName =~ @"services.exe"
+| join kind=inner file_creations on DeviceId, FileName, FolderPath
+| where Timestamp between (FileCreateTime .. (FileCreateTime + 2m))
+| where ProcessCommandLine !in (exclusions)
+| project Timestamp, DeviceName, FileName, ProcessCommandLine, AccountName, FileCreateTime
