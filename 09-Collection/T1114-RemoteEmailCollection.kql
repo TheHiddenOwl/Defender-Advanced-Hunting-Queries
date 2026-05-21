@@ -1,0 +1,16 @@
+// Title: Mass Mailbox Export or Forwarding Rule Creation
+// Description: Hunts for mass mailbox export requests or the creation of inbox rules that forward emails to external addresses.
+// Severity: High
+// Category: Collection
+// MITRE ATT&CK: T1114
+// Author: TheHiddenOwl
+
+let lookback = 7d;
+let exclusions = dynamic([]);
+CloudAppEvents
+| where Timestamp > ago(lookback)
+| where ActionType in (@"New-MailboxExportRequest", @"Set-Mailbox", @"New-InboxRule")
+| extend ForwardTo = tostring(RawEventData.Parameters.ForwardTo)
+| extend ForwardAsAttachmentTo = tostring(RawEventData.Parameters.ForwardAsAttachmentTo)
+| where isnotempty(ForwardTo) or isnotempty(ForwardAsAttachmentTo) or ActionType == @"New-MailboxExportRequest"
+| project Timestamp, AccountUpn, ActionType, ForwardTo, ForwardAsAttachmentTo, RawEventData

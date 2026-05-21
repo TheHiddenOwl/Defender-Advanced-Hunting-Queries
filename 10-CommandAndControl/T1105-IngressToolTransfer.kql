@@ -1,0 +1,17 @@
+// Title: Ingress Tool Transfer via Common Utilities
+// Description: Detects curl.exe, wget.exe, or bitsadmin.exe downloading files from suspicious domains or raw IP addresses.
+// Severity: Medium
+// Category: Command and Control
+// MITRE ATT&CK: T1105
+// Author: TheHiddenOwl
+
+let lookback = 7d;
+let exclusions = dynamic([]);
+let transfer_tools = dynamic([@"curl.exe", @"wget.exe", @"bitsadmin.exe"]);
+DeviceProcessEvents
+| where Timestamp > ago(lookback)
+| where FileName in~ (transfer_tools)
+| where ProcessCommandLine matches regex @"http[s]?://[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}"
+    or ProcessCommandLine has_any (@"githubusercontent.com", @"pastebin.com", @"discordapp.com")
+| where ProcessCommandLine !in (exclusions)
+| project Timestamp, DeviceName, FileName, ProcessCommandLine, AccountName

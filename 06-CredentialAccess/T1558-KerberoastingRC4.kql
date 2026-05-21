@@ -1,0 +1,19 @@
+// Title: Kerberoasting - Excessive RC4 Ticket Requests
+// Description: Hunts for excessive RC4 ticket requests against Service Principal Names (SPNs), which may indicate Kerberoasting activity.
+// Severity: High
+// Category: Credential Access
+// MITRE ATT&CK: T1558
+// Author: TheHiddenOwl
+
+let lookback = 7d;
+let exclusions = dynamic([]);
+let threshold = 10;
+IdentityQueryEvents
+| where Timestamp > ago(lookback)
+| where ActionType == @"Kerberos Service Ticket Requested"
+| extend EncryptionType = tostring(AdditionalFields.EncryptionType)
+| where EncryptionType =~ @"RC4"
+| summarize TicketCount = count() by TargetAccountUpn, AccountUpn, DeviceName, EncryptionType, bin(Timestamp, 1h)
+| where TicketCount > threshold
+| where AccountUpn !in (exclusions)
+| project Timestamp, AccountUpn, TargetAccountUpn, TicketCount, DeviceName

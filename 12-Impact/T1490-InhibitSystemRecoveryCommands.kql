@@ -1,0 +1,20 @@
+// Title: Ransomware Backup Deletion Commands
+// Description: Detects the exact commands used by ransomware to delete shadow copies and inhibit system recovery.
+// Severity: High
+// Category: Impact
+// MITRE ATT&CK: T1490
+// Author: TheHiddenOwl
+
+let lookback = 7d;
+let exclusions = dynamic([]);
+let backup_deletion_commands = dynamic([
+    @"vssadmin.exe delete shadows /all /quiet",
+    @"wmic shadowcopy delete",
+    @"bcdedit /set {default} recoveryenabled No",
+    @"bcdedit /set {default} bootstatuspolicy ignoreallfailures"
+]);
+DeviceProcessEvents
+| where Timestamp > ago(lookback)
+| where ProcessCommandLine has_any (backup_deletion_commands)
+| where ProcessCommandLine !in (exclusions)
+| project Timestamp, DeviceName, FileName, ProcessCommandLine, AccountName

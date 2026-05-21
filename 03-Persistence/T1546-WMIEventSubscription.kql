@@ -1,0 +1,14 @@
+// Title: WMI Event Subscription - Script Consumer Execution
+// Description: Detects scrcons.exe (WMI Standard Event Consumer) executing scripts, which is a highly stealthy persistence mechanism.
+// Severity: High
+// Category: Persistence
+// MITRE ATT&CK: T1546
+// Author: TheHiddenOwl
+
+let lookback = 7d;
+let exclusions = dynamic([]);
+DeviceProcessEvents
+| where Timestamp > ago(lookback)
+| where FileName =~ @"scrcons.exe"
+| where ProcessCommandLine !in (exclusions)
+| project Timestamp, DeviceName, FileName, ProcessCommandLine, AccountName, ParentFileName

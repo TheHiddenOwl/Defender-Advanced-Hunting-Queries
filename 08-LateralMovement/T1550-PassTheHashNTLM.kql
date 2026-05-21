@@ -1,0 +1,17 @@
+// Title: Potential Pass-the-Hash - NTLM Authentication without Interaction
+// Description: Detects NTLM authentications where the user did not interact with a credential prompt, especially to privileged endpoints.
+// Severity: Medium
+// Category: Lateral Movement
+// MITRE ATT&CK: T1550
+// Author: TheHiddenOwl
+
+let lookback = 7d;
+let exclusions = dynamic([]);
+IdentityLogonEvents
+| where Timestamp > ago(lookback)
+| where Protocol == @"Ntlm"
+| where LogonType == @"Network"
+| where isnotempty(AccountName)
+| where AdditionalFields.IsInteractive == false
+| where AccountName !in (exclusions)
+| project Timestamp, DeviceName, AccountName, RemoteIP, RemoteDeviceName, AdditionalFields

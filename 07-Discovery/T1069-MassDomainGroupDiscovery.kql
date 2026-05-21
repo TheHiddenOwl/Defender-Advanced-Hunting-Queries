@@ -1,0 +1,19 @@
+// Title: Mass Domain Group Discovery via LDAP
+// Description: Detects a large number of LDAP queries originating from a single endpoint querying "Domain Admins" or "Enterprise Admins" groups.
+// Severity: Medium
+// Category: Discovery
+// MITRE ATT&CK: T1069
+// Author: TheHiddenOwl
+
+let lookback = 7d;
+let exclusions = dynamic([]);
+let threshold = 50;
+let target_groups = dynamic([@"Domain Admins", @"Enterprise Admins"]);
+IdentityQueryEvents
+| where Timestamp > ago(lookback)
+| where ActionType == @"LDAP query"
+| where QueryTarget in~ (target_groups) or Query has_any (target_groups)
+| summarize QueryCount = count() by DeviceName, AccountName, QueryTarget, bin(Timestamp, 1h)
+| where QueryCount > threshold
+| where AccountName !in (exclusions)
+| project Timestamp, DeviceName, AccountName, QueryTarget, QueryCount

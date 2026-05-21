@@ -1,0 +1,19 @@
+// Title: Large Data Upload to Cloud Storage via Rclone or Browser
+// Description: Detects large outbound data transfers (>100MB) to non-sanctioned file-sharing sites via rclone or browsers.
+// Severity: High
+// Category: Exfiltration
+// MITRE ATT&CK: T1567
+// Author: TheHiddenOwl
+
+let lookback = 7d;
+let exclusions = dynamic([]);
+let threshold = 100MB;
+let cloud_storage = dynamic([@"mega.nz", @"mediafire.com", @"pastebin.com", @"dropbox.com", @"onedrive.live.com"]);
+DeviceNetworkEvents
+| where Timestamp > ago(lookback)
+| where InitiatingProcessFileName =~ @"rclone.exe" or InitiatingProcessFileName in~ (@"chrome.exe", @"msedge.exe", @"firefox.exe")
+| where RemoteUrl has_any (cloud_storage)
+| summarize TotalBytes = sum(BytesSent) by DeviceName, InitiatingProcessFileName, RemoteUrl, bin(Timestamp, 1h)
+| where TotalBytes > threshold
+| where DeviceName !in (exclusions)
+| project Timestamp, DeviceName, InitiatingProcessFileName, RemoteUrl, TotalBytes

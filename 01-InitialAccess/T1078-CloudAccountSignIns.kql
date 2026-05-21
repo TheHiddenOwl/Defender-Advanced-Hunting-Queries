@@ -1,0 +1,16 @@
+// Title: Entra ID Sign-ins Lacking MFA or from Anonymizing VPN/Tor
+// Description: Hunts for Entra ID sign-in events that bypassed MFA or originated from known anonymizing networks (VPNs, Tor exit nodes) according to Microsoft Threat Intel.
+// Severity: Medium
+// Category: Initial Access
+// MITRE ATT&CK: T1078
+// Author: TheHiddenOwl
+
+let lookback = 7d;
+let exclusions = dynamic([@"service_account@contoso.com"]);
+AADSignInEventsBeta
+| where Timestamp > ago(lookback)
+| where (IsMfaRegistered == false or AuthenticationRequirement == @"singleFactorAuthentication")
+    or (NetworkLocationDetails has @"anonymous" or NetworkLocationDetails has @"tor")
+| where ErrorCode == 0 // Successful sign-ins
+| where AccountUpn !in (exclusions)
+| project Timestamp, AccountUpn, IPAddress, Country, City, NetworkLocationDetails, AuthenticationRequirement, ConditionalAccessStatus

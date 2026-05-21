@@ -1,0 +1,17 @@
+// Title: Anomalous Successful VPN/RDS Logins from Outside US
+// Description: Detects successful logins to VPN appliances or Remote Desktop Gateways originating from countries other than the United States.
+// Severity: Medium
+// Category: Initial Access
+// MITRE ATT&CK: T1133
+// Author: TheHiddenOwl
+
+let lookback = 7d;
+let exclusions = dynamic([@"admin@contoso.com", @"1.2.3.4"]);
+let targeted_apps = dynamic([@"VPN", @"AnyConnect", @"GlobalProtect", @"FortiClient", @"Remote Desktop Gateway"]);
+IdentityLogonEvents
+| where Timestamp > ago(lookback)
+| where ActionType == @"LogonSuccess"
+| where Country != @"US"
+| where Application in~ (targeted_apps) or Protocol in~ (targeted_apps)
+| where AccountUpn !in (exclusions) and RemoteIP !in (exclusions)
+| project Timestamp, AccountUpn, RemoteIP, Country, Application, Protocol, DeviceName

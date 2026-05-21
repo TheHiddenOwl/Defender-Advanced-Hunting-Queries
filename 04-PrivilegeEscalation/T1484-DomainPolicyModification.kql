@@ -1,0 +1,18 @@
+// Title: Default Domain Policy Modification - User Rights Assignment
+// Description: Detects changes to the Default Domain Policy or Default Domain Controllers Policy, specifically targeting User Rights Assignments.
+// Severity: High
+// Category: Privilege Escalation
+// MITRE ATT&CK: T1484
+// Author: TheHiddenOwl
+
+let lookback = 7d;
+let exclusions = dynamic([]);
+let target_gpos = dynamic([@"Default Domain Policy", @"Default Domain Controllers Policy"]);
+IdentityDirectoryEvents
+| where Timestamp > ago(lookback)
+| where ActionType == @"Group Policy Object modified"
+| extend GpoDisplayName = tostring(AdditionalFields.DisplayName)
+| where GpoDisplayName in~ (target_gpos)
+| where AdditionalFields contains @"User Rights Assignment"
+| where AccountName !in (exclusions)
+| project Timestamp, AccountName, GpoDisplayName, ActionType, AdditionalFields

@@ -1,0 +1,24 @@
+// Title: Potential Process Hollowing - Heavy Activity from Suspicious Spawn
+// Description: Detects processes that may have been hollowed out by looking for suspicious network or file I/O immediately after being spawned.
+// Severity: High
+// Category: Privilege Escalation
+// MITRE ATT&CK: T1055
+// Author: TheHiddenOwl
+
+let lookback = 7d;
+let exclusions = dynamic([]);
+let suspicious_parents = dynamic([@"cmd.exe", @"powershell.exe", @"pwsh.exe"]);
+let hollowed_candidates = dynamic([@"svchost.exe", @"explorer.exe", @"lsass.exe", @"cvtres.exe", @"vbc.exe"]);
+let process_spawn = DeviceProcessEvents
+| where Timestamp > ago(lookback)
+| where ParentFileName in~ (suspicious_parents)
+| where FileName in~ (hollowed_candidates)
+| project SpawnTime = Timestamp, DeviceId, DeviceName, FileName, ProcessId, ProcessCommandLine;
+let network_activity = DeviceNetworkEvents
+| where Timestamp > ago(lookback)
+| project NetworkTime = Timestamp, DeviceId, DeviceName, InitiatingProcessId, RemoteIP, RemotePort;
+process_spawn
+| join kind=inner network_activity on DeviceId
+| where InitiatingProcessId == ProcessId
+| where NetworkTime between (SpawnTime .. (SpawnTime + 2m))
+| project SpawnTime, NetworkTime, DeviceName, FileName, ProcessCommandLine, RemoteIP, RemotePort

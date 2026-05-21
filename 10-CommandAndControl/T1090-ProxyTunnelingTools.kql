@@ -1,0 +1,15 @@
+// Title: Execution of Known Tunneling and Proxy Tools
+// Description: Detects the execution of known tunneling tools (e.g., ngrok, ligolo, chisel) or SSH reverse port forwarding.
+// Severity: High
+// Category: Command and Control
+// MITRE ATT&CK: T1090
+// Author: TheHiddenOwl
+
+let lookback = 7d;
+let exclusions = dynamic([]);
+let tunneling_tools = dynamic([@"ngrok.exe", @"ligolo.exe", @"chisel.exe", @"frpc.exe", @"plink.exe"]);
+DeviceProcessEvents
+| where Timestamp > ago(lookback)
+| where FileName in~ (tunneling_tools) or (FileName =~ @"ssh.exe" and ProcessCommandLine has @"-R")
+| where ProcessCommandLine !in (exclusions)
+| project Timestamp, DeviceName, FileName, ProcessCommandLine, AccountName

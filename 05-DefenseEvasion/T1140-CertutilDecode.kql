@@ -1,0 +1,15 @@
+// Title: Certutil Decode Operation
+// Description: Detects certutil.exe -decode being used to reassemble dropped malware payloads from encoded files.
+// Severity: Medium
+// Category: Defense Evasion
+// MITRE ATT&CK: T1140
+// Author: TheHiddenOwl
+
+let lookback = 7d;
+let exclusions = dynamic([]);
+DeviceProcessEvents
+| where Timestamp > ago(lookback)
+| where FileName =~ @"certutil.exe"
+| where ProcessCommandLine has @"-decode"
+| where ProcessCommandLine !in (exclusions)
+| project Timestamp, DeviceName, FileName, ProcessCommandLine, AccountName

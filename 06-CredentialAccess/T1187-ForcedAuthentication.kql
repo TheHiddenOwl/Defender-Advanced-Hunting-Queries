@@ -1,0 +1,14 @@
+// Title: Forced Authentication - Anomalous SMB Coercion
+// Description: Detects anomalous SMB traffic attempting to coerce authentication (e.g., PetitPotam or PrinterBug behavior) from Domain Controllers.
+// Severity: High
+// Category: Credential Access
+// MITRE ATT&CK: T1187
+// Author: TheHiddenOwl
+
+let lookback = 7d;
+let exclusions = dynamic([@"10.0.0.1"]);
+IdentityDirectoryEvents
+| where Timestamp > ago(lookback)
+| where ActionType in (@"SMB connection to Domain Controller", @"Potential PetitPotam attack")
+| where RemoteIP !in (exclusions)
+| project Timestamp, DeviceName, ActionType, RemoteIP, RemotePort, AdditionalFields

@@ -1,0 +1,16 @@
+// Title: Remote WMI Execution - Suspicious Child Processes
+// Description: Detects WmiPrvSE.exe spawning suspicious processes, which is a common indicator of remote WMI execution.
+// Severity: Medium
+// Category: Execution
+// MITRE ATT&CK: T1047
+// Author: TheHiddenOwl
+
+let lookback = 7d;
+let exclusions = dynamic([@"C:\Windows\System32\wbem\WmiPrvSE.exe"]);
+let suspicious_children = dynamic([@"cmd.exe", @"powershell.exe", @"pwsh.exe", @"scrcons.exe", @"cscript.exe", @"wscript.exe", @"certutil.exe", @"bitsadmin.exe"]);
+DeviceProcessEvents
+| where Timestamp > ago(lookback)
+| where ParentFileName =~ @"WmiPrvSE.exe"
+| where FileName in~ (suspicious_children)
+| where ProcessCommandLine !in (exclusions)
+| project Timestamp, DeviceName, ParentFileName, FileName, ProcessCommandLine, AccountName

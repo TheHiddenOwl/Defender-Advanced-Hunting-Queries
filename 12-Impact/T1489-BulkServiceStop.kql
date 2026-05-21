@@ -1,0 +1,22 @@
+// Title: Bulk Stopping of Critical Services
+// Description: Detects the bulk stopping of security, backup, or database services via net stop or sc.exe stop in a short timeframe.
+// Severity: High
+// Category: Impact
+// MITRE ATT&CK: T1489
+// Author: TheHiddenOwl
+
+let lookback = 7d;
+let exclusions = dynamic([]);
+let critical_services = dynamic([@"WinDefend", @"SentinelAgent", @"CylanceSvc", @"Veeam", @"Backup", @"sql", @"msexchange"]);
+let threshold = 5;
+DeviceProcessEvents
+| where Timestamp > ago(lookback)
+| where (FileName =~ @"net.exe" and ProcessCommandLine has @"stop")
+    or (FileName =~ @"sc.exe" and ProcessCommandLine has @"stop")
+| extend ServiceName = extract(@"stop\s+(?:""([^""]+)""|([^\s]+))", 1, ProcessCommandLine)
+| extend ServiceName = coalesce(ServiceName, extract(@"stop\s+(?:""([^""]+)""|([^\s]+))", 2, ProcessCommandLine))
+| where ServiceName has_any (critical_services)
+| summarize ServiceStopCount = count() by DeviceName, bin(Timestamp, 2m)
+| where ServiceStopCount >= threshold
+| where DeviceName !in (exclusions)
+| project Timestamp, DeviceName, ServiceStopCount
