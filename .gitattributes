@@ -1,0 +1,5 @@
+# Hide internal Python scripts from repository language statistics
+*.py linguist-detectable=false
+
+# Explicitly define and count KQL files as Kusto
+*.kql linguist-language=Kusto
