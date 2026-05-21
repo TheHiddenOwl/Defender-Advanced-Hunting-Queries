@@ -1,0 +1,16 @@
+// Title: Successful Sign-in from Anonymous IP
+// Description: Detects successful Entra ID sign-ins from Anonymous IP addresses (Tor, VPNs)
+// Severity: Medium
+// Category: Initial Access
+// MITRE ATT&CK: T1078
+// Author: TheHiddenOwl
+
+let lookback = 7d;
+let exclusions = dynamic([@"user@example.com"]);
+AADSignInEventsBeta
+| where Timestamp > ago(lookback)
+| where ErrorCode == 0 // Successful sign-in
+| where RiskDetail == @"anonymousIPAddress" or RiskLevelDuringSignIn == @"High"
+| where not(AccountUpn has_any (exclusions))
+| project Timestamp, AccountUpn, IPAddress, Country, RiskDetail, Application, UserAgent
+| top 100 by Timestamp desc

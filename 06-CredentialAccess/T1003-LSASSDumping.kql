@@ -1,0 +1,16 @@
+// Title: LSASS Memory Dump via Comsvcs
+// Description: Detects LSASS memory dumping using the comsvcs.dll MiniDump technique
+// Severity: High
+// Category: Credential Access
+// MITRE ATT&CK: T1003.001
+// Author: TheHiddenOwl
+
+let lookback = 7d;
+let exclusions = dynamic([@"SafeProcess.exe"]);
+DeviceProcessEvents
+| where Timestamp > ago(lookback)
+| where FileName =~ @"rundll32.exe"
+| where ProcessCommandLine has @"comsvcs.dll" and ProcessCommandLine has @"MiniDump"
+| where not(InitiatingProcessFileName has_any (exclusions))
+| project Timestamp, DeviceName, AccountName, InitiatingProcessFileName, ProcessCommandLine
+| top 100 by Timestamp desc
