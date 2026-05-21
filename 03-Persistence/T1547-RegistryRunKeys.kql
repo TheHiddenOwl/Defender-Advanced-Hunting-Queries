@@ -1,0 +1,17 @@
+// Title: Suspicious Registry Run Key Modification
+// Description: Detects suspicious additions to the Windows Registry Run/RunOnce keys
+// Severity: Medium
+// Category: Persistence
+// MITRE ATT&CK: T1547.001
+// Author: TheHiddenOwl
+
+let lookback = 7d;
+let exclusions = dynamic([@"SafeApp.exe"]);
+DeviceRegistryEvents
+| where Timestamp > ago(lookback)
+| where ActionType in~ (@"RegistryKeyCreated", @"RegistryValueCreated", @"RegistryValueSet")
+| where RegistryKey has_any (@"\\Software\\Microsoft\\Windows\\CurrentVersion\\Run", @"\\Software\\Microsoft\\Windows\\CurrentVersion\\RunOnce")
+| where RegistryValueData endswith @".exe" or RegistryValueData endswith @".ps1" or RegistryValueData endswith @".bat"
+| where not(RegistryValueData has_any (exclusions))
+| project Timestamp, DeviceName, RegistryKey, RegistryValueName, RegistryValueData, InitiatingProcessFileName
+| top 100 by Timestamp desc

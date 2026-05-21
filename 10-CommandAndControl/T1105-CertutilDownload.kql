@@ -1,0 +1,16 @@
+// Title: Certutil Payload Download
+// Description: Detects the abuse of certutil.exe to download remote payloads
+// Severity: Medium
+// Category: Command & Control
+// MITRE ATT&CK: T1105
+// Author: TheHiddenOwl
+
+let lookback = 7d;
+let exclusions = dynamic([@"SafeScript.ps1"]);
+DeviceProcessEvents
+| where Timestamp > ago(lookback)
+| where FileName =~ @"certutil.exe"
+| where ProcessCommandLine has_any (@"-urlcache", @"-split", @"-f")
+| where not(ProcessCommandLine has_any (exclusions))
+| project Timestamp, DeviceName, AccountName, InitiatingProcessFileName, ProcessCommandLine
+| top 100 by Timestamp desc

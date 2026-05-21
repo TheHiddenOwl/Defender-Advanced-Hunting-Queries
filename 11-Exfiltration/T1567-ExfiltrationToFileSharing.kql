@@ -1,0 +1,16 @@
+// Title: Exfiltration to Public File Sharing
+// Description: Detects data transfer tools or curl reaching out to common public file-sharing domains
+// Severity: Medium
+// Category: Exfiltration
+// MITRE ATT&CK: T1567
+// Author: TheHiddenOwl
+
+let lookback = 7d;
+let exclusions = dynamic([@"AllowedDomain.com"]);
+DeviceNetworkEvents
+| where Timestamp > ago(lookback)
+| where InitiatingProcessFileName in~ (@"rclone.exe", @"curl.exe")
+| where RemoteUrl has_any (@"mega.nz", @"mega.co.nz", @"transfer.sh", @"file.io", @"pastebin.com")
+| where not(RemoteUrl has_any (exclusions))
+| project Timestamp, DeviceName, InitiatingProcessFileName, RemoteIP, RemoteUrl, RemotePort
+| top 100 by Timestamp desc

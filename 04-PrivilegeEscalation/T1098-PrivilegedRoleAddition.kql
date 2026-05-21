@@ -1,0 +1,17 @@
+// Title: User Added to Privileged Role
+// Description: Detects a user being added to a highly privileged Entra ID Role (e.g., Global Admin)
+// Severity: High
+// Category: Privilege Escalation
+// MITRE ATT&CK: T1098
+// Author: TheHiddenOwl
+
+let lookback = 7d;
+let exclusions = dynamic([@"admin@example.com"]);
+CloudAppEvents
+| where Timestamp > ago(lookback)
+| where Application == @"Office 365"
+| where ActionType == @"Add member to role."
+| where RawEventData.ModifiedProperties has @"Company Administrator" or RawEventData.ModifiedProperties has @"Global Administrator"
+| where not(AccountDisplayName has_any (exclusions))
+| project Timestamp, InitiatingUser = AccountDisplayName, TargetUser = tostring(RawEventData.Target[0].ID), ActionType, IPAddress
+| top 100 by Timestamp desc
