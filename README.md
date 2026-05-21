@@ -27,6 +27,7 @@ organized by MITRE ATT&CK tactic.
 | 11-Exfiltration        | Exfiltration           | TA0010    |
 | 12-Impact              | Impact                 | TA0040    |
 
+
 ## Data Sources
 
 Queries use tables including:
