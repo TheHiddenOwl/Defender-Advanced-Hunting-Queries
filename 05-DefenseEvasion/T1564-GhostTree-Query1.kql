@@ -1,0 +1,36 @@
+// Title: GhostTree - Junction Creation via mklink
+// Description: Detects mklink /J execution regardless of folder names used to create recursive loops (EDR evasion).
+// Severity: Medium
+// Category: Defense Evasion
+// MITRE ATT&CK: T1564
+// Author: TheHiddenOwl
+
+let lookback = 7d;
+let exclusions = dynamic([@"C:\Example\Path\To\Exclude"]);
+DeviceProcessEvents
+| where Timestamp > ago(lookback)
+| where not(FolderPath has_any (exclusions))
+| where FileName =~ @"cmd.exe" or InitiatingProcessFileName =~ @"cmd.exe"
+| where ProcessCommandLine has_all (@"mklink", @"/J")
+   or InitiatingProcessCommandLine has_all (@"mklink", @"/J")
+| extend
+   CommandLine = coalesce(ProcessCommandLine, InitiatingProcessCommandLine),
+   Actor = AccountName
+// Parse out junction source and target from the command line
+| extend
+   JunctionArgs = extract(@"mklink\s+/[Jj]\s+(.+)", 1, CommandLine)
+| extend
+   JunctionSource = trim(@"\s", extract(@"^([^\s]+)", 1, JunctionArgs)),
+   JunctionTarget = trim(@"\s", extract(@"^[^\s]+\s+(.+)$", 1, JunctionArgs))
+// Flag where target is a parent of source (recursive loop indicator)
+| extend IsSelfReferential = (
+   isnotempty(JunctionSource) and
+   isnotempty(JunctionTarget) and
+   JunctionSource startswith JunctionTarget
+)
+| project
+   Timestamp, DeviceName, Actor,
+   CommandLine, JunctionSource, JunctionTarget,
+   IsSelfReferential,
+   InitiatingProcessFileName, InitiatingProcessCommandLine
+| order by Timestamp desc

@@ -1,0 +1,46 @@
+// Title: GhostTree - Multiple Junctions Created in Same Directory
+// Description: Detects 2+ junctions under one folder within a short window, suggesting a tree setup for evasion.
+// Severity: Medium
+// Category: Defense Evasion
+// MITRE ATT&CK: T1564
+// Author: TheHiddenOwl
+
+let lookback = 7d;
+let exclusions = dynamic([@"C:\Example\Path\To\Exclude"]);
+DeviceProcessEvents
+| where Timestamp > ago(lookback)
+| where not(FolderPath has_any (exclusions))
+| where (FileName =~ @"cmd.exe" or FileName =~ @"powershell.exe" or FileName =~ @"pwsh.exe")
+| where ProcessCommandLine has_all (@"mklink", @"/J")
+   or (ProcessCommandLine has @"New-Item" and ProcessCommandLine has @"Junction")
+| extend
+   CommandLine = ProcessCommandLine,
+   Actor = AccountName,
+   DeviceKey = strcat(DeviceName, @"|", AccountName)
+// Extract target directory from mklink /J <link> <target>
+| extend JunctionArgs = extract(@"(?i)mklink\s+/[Jj]\s+(\S+)\s+(\S+)", 0, CommandLine)
+| extend
+   JunctionLink = extract(@"(?i)mklink\s+/[Jj]\s+(\S+)\s+", 1, CommandLine),
+   JunctionTarget = extract(@"(?i)mklink\s+/[Jj]\s+\S+\s+(\S+)", 1, CommandLine)
+// Derive parent directory of the junction link
+| extend JunctionLinkParent = extract(@"^(.+)\\[^\\]+$", 1, JunctionLink)
+// Group by device+user+parent directory within a 10-minute window
+| summarize
+   JunctionCount = count(),
+   JunctionLinks = make_set(JunctionLink, 10),
+   JunctionTargets = make_set(JunctionTarget, 10),
+   FirstSeen = min(Timestamp),
+   LastSeen = max(Timestamp)
+   by DeviceName, AccountName, JunctionLinkParent, bin(Timestamp, 10m)
+// Alert when 2 or more junctions are created under the same parent directory
+| where JunctionCount >= 2
+// And at least one target matches the parent (self-referential)
+| extend HasSelfReferential = (
+   JunctionTargets has JunctionLinkParent
+)
+| project
+   FirstSeen, LastSeen, DeviceName, AccountName,
+   JunctionLinkParent, JunctionCount,
+   JunctionLinks, JunctionTargets,
+   HasSelfReferential
+| order by FirstSeen desc
