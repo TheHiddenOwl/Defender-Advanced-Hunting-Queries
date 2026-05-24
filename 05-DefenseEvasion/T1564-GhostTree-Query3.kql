@@ -1,0 +1,32 @@
+// Title: GhostTree - Reparse Point Creation via File Events
+// Description: Catches junction creation at the file system level, which detects API-based creation beyond just mklink.
+// Severity: Medium
+// Category: Defense Evasion
+// MITRE ATT&CK: T1564
+// Author: TheHiddenOwl
+
+let lookback = 7d;
+let exclusions = dynamic([@"C:\Example\Path\To\Exclude"]);
+DeviceFileEvents
+| where Timestamp > ago(lookback)
+| where not(FolderPath has_any (exclusions))
+| where ActionType in (@"FileCreated", @"DirectoryCreated")
+| where AdditionalFields has @"ReparsePoint"
+   or AdditionalFields has @"Junction"
+   or AdditionalFields has @"SymbolicLink"
+| extend ParsedFields = parse_json(AdditionalFields)
+| extend
+   FileAttributes = tostring(ParsedFields.FileAttributes),
+   TargetPath = tostring(ParsedFields.TargetPath)
+| where FileAttributes has @"ReparsePoint"
+// Detect if the target is a parent of the created junction (recursive loop)
+| extend IsRecursive = (
+   isnotempty(TargetPath) and
+   FolderPath startswith TargetPath
+)
+| project
+   Timestamp, DeviceName, AccountName,
+   FolderPath, FileName, TargetPath,
+   FileAttributes, IsRecursive,
+   InitiatingProcessFileName, InitiatingProcessCommandLine
+| order by Timestamp desc

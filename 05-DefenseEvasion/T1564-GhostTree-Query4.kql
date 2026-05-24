@@ -1,0 +1,36 @@
+// Title: GhostTree - Junction and Suspicious Executable Correlation
+// Description: Correlates junction creation with an executable appearing in the same folder within 30 minutes.
+// Severity: Medium
+// Category: Defense Evasion
+// MITRE ATT&CK: T1564
+// Author: TheHiddenOwl
+
+let lookback = 7d;
+let exclusions = dynamic([@"C:\Example\Path\To\Exclude"]);
+let JunctionCreations = DeviceProcessEvents
+| where Timestamp > ago(lookback)
+| where not(FolderPath has_any (exclusions))
+| where ProcessCommandLine has_all (@"mklink", @"/J")
+| extend JunctionLink = extract(@"(?i)mklink\s+/[Jj]\s+(\S+)\s+", 1, ProcessCommandLine)
+| extend JunctionParent = extract(@"^(.+)\\[^\\]+$", 1, JunctionLink)
+| project JunctionTime = Timestamp, DeviceName, AccountName, JunctionParent;
+let ExecutablesDropped = DeviceFileEvents
+| where Timestamp > ago(lookback)
+| where not(FolderPath has_any (exclusions))
+| where ActionType in (@"FileCreated", @"FileModified")
+| where FileName endswith @".exe"
+   or FileName endswith @".dll"
+   or FileName endswith @".bat"
+   or FileName endswith @".ps1"
+   or FileName endswith @".vbs"
+   or FileName endswith @".hta"
+| project FileTime = Timestamp, DeviceName, AccountName, FolderPath, FileName;
+// Join: executable dropped within 30 minutes of junction creation in same folder
+JunctionCreations
+| join kind=inner ExecutablesDropped on DeviceName, AccountName
+| where FolderPath startswith JunctionParent
+| where abs(datetime_diff(@"minute", FileTime, JunctionTime)) <= 30
+| project
+   JunctionTime, FileTime, DeviceName, AccountName,
+   JunctionParent, FolderPath, FileName
+| order by JunctionTime desc
