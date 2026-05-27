@@ -1,0 +1,18 @@
+// Preferably use ObjectID
+let AccountObjectID = "00000000000";
+let AccountUPN = "test@test.com";
+let SearchWindow = 48h; //Customizable h = hours, d = days
+// Collect the statistics for the office activities by the user
+let OfficeStats = OfficeActivity
+    | where TimeGenerated > ago(SearchWindow)
+    | where ((not(isempty(AccountObjectID)) and UserKey == AccountObjectID) or (isempty(AccountObjectID) and tolower(UserId) == tolower(AccountUPN)))
+    | summarize TotalActivities = count() by Operation, RecordType;
+// Collect the details for the office activities by the user. If this is to much do not show all results.
+let Details = OfficeActivity
+    | where TimeGenerated > ago(SearchWindow)
+    | where ((not(isempty(AccountObjectID)) and UserKey == AccountObjectID) or (isempty(AccountObjectID) and tolower(UserId) == tolower(AccountUPN)));
+// Join results of previous queries together into one and first show the statistics, followed by the details.
+union isfuzzy=true
+ (OfficeStats),
+ (Details)
+| sort  by TotalActivities

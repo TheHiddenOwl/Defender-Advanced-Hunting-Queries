@@ -8,7 +8,7 @@ def validate_folders():
     # Get all entries and sort them to ensure consistent order
     entries = sorted(os.listdir('.'))
     for entry in entries:
-        if os.path.isdir(entry) and not entry.startswith('.') and entry != 'scripts' and entry != '.github' and entry != 'templates':
+        if os.path.isdir(entry) and not entry.startswith('.') and entry != 'scripts' and entry != '.github' and entry != 'templates' and entry != 'DFIR':
             if not re.match(r'^\d{2}-[\w]+$', entry):
                 errors.append(f"Invalid folder name: {entry}. Must match 00-Name format.")
             else:
